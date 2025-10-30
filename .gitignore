@@ -47,3 +47,12 @@ logs/
 # Datos temporales
 *.tmp
 *.temp
+
+# Documentos ofimáticos / PDFs (sensibles)
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.pdf
