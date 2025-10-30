@@ -1,0 +1,8 @@
+streamlit
+lark-parser
+graphviz
+networkx
+matplotlib
+pandas
+
+

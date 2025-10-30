@@ -1,0 +1,22 @@
+{
+  "tables": {
+    "students": {
+      "id": {"type": "INT"},
+      "name": {"type": "VARCHAR", "size": 100},
+      "age": {"type": "INT"},
+      "gpa": {"type": "FLOAT"}
+    },
+    "courses": {
+      "id": {"type": "INT"},
+      "title": {"type": "VARCHAR", "size": 150},
+      "credits": {"type": "INT"}
+    },
+    "enrollments": {
+      "student_id": {"type": "INT"},
+      "course_id": {"type": "INT"},
+      "grade": {"type": "VARCHAR", "size": 2}
+    }
+  }
+}
+
+
