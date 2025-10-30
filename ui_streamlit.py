@@ -224,37 +224,6 @@ if outcome is not None:
         else:
             st.success("No se detectaron errores")
 
-    st.markdown("### ⚠️ Errores detectados")
-    errors = outcome.get("errors", [])
-    if errors:
-        snippet = outcome.get("error_snippet")
-        if snippet:
-            st.code(snippet)
-        for e in errors:
-            st.error(e)
-        hints = outcome.get("hints", [])
-        if hints:
-            # Panel por fase
-            phase = outcome.get("phase", "")
-            with st.expander(f"🛠️ Guía de corrección ({phase})", expanded=True):
-                st.markdown("#### Recomendaciones")
-                for h in hints:
-                    st.write("- ", h)
-                st.markdown("#### Ejemplo correcto")
-                if phase == "léxica":
-                    st.code("SELECT id, name FROM students", language="sql")
-                elif phase == "sintáctica":
-                    st.code("SELECT col1, col2 FROM tabla WHERE col1 >= 0", language="sql")
-                else:
-                    st.code("SELECT id, name FROM students WHERE age > 18", language="sql")
-                st.markdown("#### Contraejemplo")
-                if phase == "sintáctica":
-                    st.code("SELECT col1 col2 FROM tabla  -- falta coma", language="sql")
-                else:
-                    st.code("SELECT id, apellido FROM students  -- 'apellido' no existe", language="sql")
-    else:
-        st.success("No se detectaron errores")
-
     st.markdown("---")
     st.caption(
         f"Fase alcanzada: {outcome.get('phase','')} · Ejecuta nuevamente tras corregir si hubo errores."
@@ -267,6 +236,19 @@ else:
         Si ocurre un error, el sistema se detendrá en esa fase y explicará el motivo con claridad.
         """
     )
+
+# Footer institucional y créditos
+st.markdown("---")
+st.markdown(
+    """
+    <div style="text-align:center; font-size: 0.9rem; opacity:0.85;">
+      <div><strong>Proyecto de aula — Universidad Simón Bolívar</strong></div>
+      <div>Simulador Didáctico de Compilador SQL</div>
+      <div>© Eduardo José Soto Herrera — Ingeniería de Sistemas</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 
