@@ -4,5 +4,6 @@ graphviz
 networkx
 matplotlib
 pandas
+pytest
 
 
