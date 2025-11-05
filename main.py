@@ -44,32 +44,79 @@ def analyze(sql_text: str) -> Dict[str, Any]:
         "tokens_df": None,
         "ast": None,
         "ast_graph": None,
+        "ast_text": None,
         "symbols_df": None,
         "types_df": None,
         "errors": [],
         "hints": [],
         "error_snippet": None,
         "phase": "",
+        "metrics": {"tokens": 0, "ast_nodes": 0, "symbols": 0},
     }
 
-    # Fase Léxica
+    # Fase Léxica: En un compilador real, siempre genera tokens (incluso con errores parciales)
+    tokens = []
+    lex_errors = []
     try:
         tokens = lex_sql(sql_text)
-        lex_rows = tokens_to_table(tokens)
-        result["tokens_df"] = pd.DataFrame([r.__dict__ for r in lex_rows])
-        result["phase"] = "léxica"
+        if not tokens:
+            lex_errors.append("No se generaron tokens. Revisa la entrada SQL.")
     except Exception as ex:
-        result["errors"].append(f"Error léxico: {ex}")
-        result["phase"] = "léxica"
+        lex_errors.append(f"Error léxico: {ex}")
+        # Intentar generar tokens parciales si es posible
+        try:
+            # En un compilador real, el léxico intenta generar tokens hasta donde puede
+            # Por ahora, si hay error, no generamos tokens parciales
+            pass
+        except Exception:
+            pass
+    
+    # Mostrar tokens generados (incluso si hay errores)
+    if tokens:
+        lex_rows = tokens_to_table(tokens)
+        tokens_df = pd.DataFrame([r.__dict__ for r in lex_rows])
+        result["tokens_df"] = tokens_df
+        result["metrics"]["tokens"] = len(tokens_df)
+    else:
+        result["tokens_df"] = pd.DataFrame()
+        result["metrics"]["tokens"] = 0
+    
+    result["errors"].extend(lex_errors)
+    result["phase"] = "léxica"
+    
+    # Si no hay tokens, no podemos continuar
+    if not tokens and lex_errors:
         return result
 
-    # Fase Sintáctica
+    # Fase Sintáctica: Construye AST desde los tokens del léxico
+    # En un compilador real, el sintáctico opera sobre la salida del léxico
     try:
-        ast = parse_sql_to_ast(sql_text)
+        ast = parse_sql_to_ast(sql_text, tokens=tokens)
         result["ast"] = ast
         result["ast_graph"] = ast_to_graphviz(ast)
+        # Texto del AST
+        def dump(node: Tree | Token, indent: int = 0, out_lines: list[str] | None = None):
+            if out_lines is None:
+                out_lines = []
+            prefix = "  " * indent
+            if isinstance(node, Tree):
+                out_lines.append(f"{prefix}{node.data}")
+                for ch in node.children:
+                    dump(ch, indent + 1, out_lines)
+            else:
+                out_lines.append(f"{prefix}{node.type}:{str(node)}")
+            return out_lines
+        ast_lines = dump(ast, 0, [])
+        result["ast_text"] = "\n".join(ast_lines)
+        # Conteo de nodos
+        def count_nodes(node: Tree | Token) -> int:
+            if isinstance(node, Tree):
+                return 1 + sum(count_nodes(ch) for ch in node.children)
+            return 1
+        result["metrics"]["ast_nodes"] = count_nodes(ast)
         result["phase"] = "sintáctica"
     except UnexpectedInput as ex:
+        # En un compilador real, intentamos construir AST parcial incluso con errores
         # Mensaje claro con línea/columna cuando sea posible
         line = getattr(ex, 'line', None)
         column = getattr(ex, 'column', None)
@@ -102,6 +149,8 @@ def analyze(sql_text: str) -> Dict[str, Any]:
         else:
             result["errors"].append(f"Error sintáctico: {ex}")
         result["phase"] = "sintáctica"
+        # En un compilador real, aún intentaríamos construir AST parcial
+        # Por ahora, retornamos sin AST si hay error sintáctico
         return result
     except Exception as ex:
         result["errors"].append(f"Error sintáctico: {ex}")
@@ -112,9 +161,11 @@ def analyze(sql_text: str) -> Dict[str, Any]:
     try:
         schema = load_schema()
         symbols, type_rows, sem_errors = analyze_semantics(result["ast"], schema)
-        result["symbols_df"] = pd.DataFrame([s.__dict__ for s in symbols])
+        symbols_df = pd.DataFrame([s.__dict__ for s in symbols])
+        result["symbols_df"] = symbols_df
         result["types_df"] = pd.DataFrame(type_rows)
         result["errors"].extend(sem_errors)
+        result["metrics"]["symbols"] = 0 if symbols_df is None else len(symbols_df)
         # Sugerencias semánticas
         if sem_errors:
             tables = list(schema.get("tables", {}).keys())
