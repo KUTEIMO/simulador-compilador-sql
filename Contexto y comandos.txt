@@ -1,0 +1,89 @@
+Contexto y comandos
+ simulador didáctico de compilador sql
+______
+https://github.com/KUTEIMO/simulador-compilador-sql.git
+
+correr la aplicación en local
+
+ cd "C:\Users\Eduardo Jose\Documentos\UNISIMON\TRABAJOS UNISIMON\TRABAJOS SEMESTRE 2025-2\TEORIA DE COMPILADORES\SIMULADOR"
+
+streamlit run ui_streamlit.py
+
+
+
+testear la app 
+ python -m tests.smoke_test
+
+
+
+
+
+
+
+
+
+___________________________________________________________________________________________________
+El proyecto busca recrear un simulador pedagógico el cual permita que estudiantes principiantes puedan experimentar de forma didáctica como funciona un compilador para ayudarles a comprender mejor los lenguajes como funcionan a nivel de ejecución, Mediante la instrumentación de tres módulos principales (analizador léxico, analizador sintáctico y comprobador semántico) se recreara por medio del lenguaje SQL, el sistema transforma una consulta SQL en tokens, construye un árbol de sintaxis abstracta (AST) y realiza verificaciones semánticas contra un esquema de bases de datos simulado. La interfaz interactiva facilita la visualización paso a paso y la detección de errores con mensajes explicativos. El objetivo es reducir la brecha entre teoría y práctica en la enseñanza de la teoría de compiladores, proporcionando ejercicios concretos de lenguaje, visualizaciones y retroalimentación inmediata. Se evaluara el simulador mediante casos de prueba funcionales y una prueba piloto con estudiantes en un congreso, evidenciando mayor claridad conceptual en la identificación de errores léxicos, sintácticos y semánticos. El desarrollo está implementado en Python (Lark para gramática y parsing; Streamlit para GUI), y el código está organizado para facilitar extensiones como incorporación de más construcciones SQL.
+
+_____________________________________________________________________________________
+
+El aprendizaje de teoría de compiladores suele ser abstracto y teorico como el mismo nombre del curso lo dice: los estudiantes aprenden formalismos (autómatas, gramáticas, árboles de syntaxis tablas etc de cada una de las fases) pero tienen dificultades para comprender el comportamiento real de un compilador. mas aun aplicar estos conceptos a lenguajes de consulta o programacion (SQL/php) frecuentes en cursos de bases de datos y programación esto requiere herramientas que muestren las transformaciones internas del proceso de compilación si se busca una enseñanza didactica. La carencia de herramientas didácticas accesibles y adaptables impide que los estudiantes practiquen, experimenten y comprendan las fuentes de errores en cada fase del proceso de compilación. Este proyecto atiende esa necesidad mediante un simulador que hace mas explicativas y visuales las fases léxica, sintáctica y semántica sobre consultas SQL simples.
+
+______________________________________________________________________________________
+
+Diseñar e implementar un simulador didáctico de compilador sql que enseñe las fases léxica, sintáctica y semántica de un compilador.
+
+específicos 
+
+
+Implementar un analizador léxico que produzca tokens categorizados y detecte errores léxicos.
+
+Diseñar una gramática y un analizador sintáctico que construyan un AST representativo.
+
+Implementar comprobaciones semánticas básicas (existencia de tablas/columnas, tipos compatibles).
+
+Desarrollar una interfaz interactiva que visualice tokens, AST y tabla de símbolos.
+
+Validar el simulador mediante casos de prueba y una prueba piloto con estudiantes, midiendo mejoras en la comprensión.
+
+
+_________________________________________________________________________________________
+
+
+Desarrollo de software (sprints cortos).
+
+Pruebas unitarias y funcionales (pytest).
+
+Prueba piloto con estudiantes (pre/post test; observación).
+
+Revisión bibliográfica (textos fundamentales de compiladores).
+
+Documentación técnica y manual de usuario.
+
+
+
+____________________________________________________________________________________________
+
+
+Entorno de desarrollo: Python 3.10+, editor de código, Git.
+
+Librerías: lark-parser, streamlit, pytest.
+
+Máquina local o servidor ligero para ejecutar Streamlit.
+
+Guías y textos de referencia: Ruiz Catalán (2010); Aho et al. (2006).
+
+Formato guía institucional para presentación de proyectos de aula.
+
+
+_____________________________________________________________________________________________
+
+
+Lark-parser. (2023). Lark — A modern parsing library for Python. Recuperado de https://github.com/lark-parser/lark
+
+Streamlit Inc. (2023). Streamlit Documentation: Build interactive data apps in Python. Recuperado de https://docs.streamlit.io
+
+Python Software Foundation. (2023). Python Programming Language – Official Documentation. Recuperado de https://www.python.org/doc/
+
+Graphviz. (2024). Graph Visualization Software. Recuperado de https://graphviz.org
+

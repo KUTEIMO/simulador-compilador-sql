@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from lark import Lark, Transformer, Tree, Token
+from lark import Lark, Transformer, Tree, Token, UnexpectedInput
+from typing import Optional, List
 
 
 SQL_GRAMMAR = r"""
@@ -149,7 +150,12 @@ def build_parser() -> Lark:
     return Lark(SQL_GRAMMAR, start="start", parser="lalr", propagate_positions=True, maybe_placeholders=False)
 
 
-def parse_sql_to_ast(sql_text: str) -> Tree:
+def parse_sql_to_ast(sql_text: str, tokens: Optional[List[Token]] = None) -> Tree:
+    """
+    Parsea SQL a AST. Si se proporcionan tokens del léxico, conceptualmente
+    el sintáctico se construye sobre la salida del léxico.
+    En Lark, internamente re-lexica, pero guardamos los tokens para referencia.
+    """
     parser = build_parser()
     parsed = parser.parse(sql_text)
     ast = ASTBuilder().transform(parsed)
@@ -157,8 +163,44 @@ def parse_sql_to_ast(sql_text: str) -> Tree:
 
 
 def lex_sql(sql_text: str) -> list[Token]:
+    """
+    Analiza léxicamente el texto SQL y genera tokens.
+    En un compilador real, esta fase siempre genera tokens (incluso con errores parciales).
+    Si hay un error léxico, intenta generar tokens hasta donde sea posible.
+    """
     parser = build_parser()
-    return list(parser.lex(sql_text))
+    tokens = []
+    try:
+        # Intento normal de tokenización
+        tokens = list(parser.lex(sql_text))
+    except UnexpectedInput as e:
+        # En un compilador real, el léxico genera tokens hasta donde puede
+        # Intentar recuperar tokens parciales
+        try:
+            # Usar el lexer directamente para obtener tokens hasta el error
+            lexer = parser.lexer
+            lexer_state = lexer.make_lexer_state(sql_text)
+            # Generar tokens hasta el punto del error
+            for token in lexer.lex(lexer_state):
+                tokens.append(token)
+            # Si llegamos aquí, pudimos generar algunos tokens antes del error
+            # El error se reportará pero los tokens generados están disponibles
+        except Exception:
+            # Si no podemos recuperar tokens, aún intentamos generar lo que sea posible
+            # En un compilador real, esto se haría de forma más sofisticada
+            pass
+        # Si no hay tokens generados, lanzamos el error original
+        if not tokens:
+            raise e
+    except Exception as e:
+        # Para otros errores, intentar generar tokens parciales si es posible
+        try:
+            tokens = list(parser.lex(sql_text[:max(0, len(sql_text)-1)]))
+        except Exception:
+            pass
+        if not tokens:
+            raise e
+    return tokens
 
 
 

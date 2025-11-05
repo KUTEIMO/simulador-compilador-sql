@@ -114,11 +114,11 @@ if outcome is not None:
     sym_df = outcome.get("symbols_df")
     k1, k2, k3 = st.columns(3)
     with k1:
-        st.metric("Tokens", 0 if tok_df is None else len(tok_df))
+        st.metric("Tokens", outcome.get("metrics", {}).get("tokens", 0))
     with k2:
-        st.metric("Nodos AST", 0 if ast_obj is None else len(getattr(ast_obj, "children", [])))
+        st.metric("Nodos AST", outcome.get("metrics", {}).get("ast_nodes", 0))
     with k3:
-        st.metric("Símbolos", 0 if sym_df is None else len(sym_df))
+        st.metric("Símbolos", outcome.get("metrics", {}).get("symbols", 0))
 
     tabs = st.tabs(["📜 Tokens", "🌳 AST", "🧩 Semántica", "⚠️ Errores"])
 
@@ -127,6 +127,7 @@ if outcome is not None:
             """
             🔍 Fase Léxica: El compilador separa tu código en unidades básicas llamadas "tokens".
             Cada token representa una palabra clave, identificador, operador o literal.
+            En un compilador real, esta fase siempre genera tokens (incluso con errores parciales).
             """
         )
         tokens_df: pd.DataFrame | None = outcome.get("tokens_df")
@@ -152,8 +153,10 @@ if outcome is not None:
     with tabs[1]:
         st.info(
             """
-            🌳 Fase Sintáctica: Se construye el Árbol de Sintaxis Abstracta (AST), donde cada nodo
-            representa una estructura del lenguaje (por ejemplo: `SELECT_NODE`, `WHERE_CLAUSE`, `COLUMN_LIST`).
+            🌳 Fase Sintáctica: Se construye el Árbol de Sintaxis Abstracta (AST) desde los tokens
+            generados por la fase léxica. Cada nodo representa una estructura del lenguaje
+            (por ejemplo: `SELECT_NODE`, `WHERE_CLAUSE`, `COLUMN_LIST`).
+            En un compilador real, el sintáctico opera sobre la salida del léxico.
             """
         )
         ast_graph = outcome.get("ast_graph")
@@ -166,6 +169,13 @@ if outcome is not None:
                 pass
         else:
             st.write("No se pudo construir el AST.")
+        # Vista textual del AST
+        with st.expander("Ver AST como lista jerárquica", expanded=False):
+            ast_text = outcome.get("ast_text")
+            if ast_text:
+                st.code(ast_text)
+            else:
+                st.write("AST no disponible.")
         if step_mode and fase_actual == 2:
             st.stop()
 
@@ -244,7 +254,7 @@ st.markdown(
     <div style="text-align:center; font-size: 0.9rem; opacity:0.85;">
       <div><strong>Proyecto de aula — Universidad Simón Bolívar</strong></div>
       <div>Simulador Didáctico de Compilador SQL</div>
-      <div>© Eduardo José Soto Herrera — Ingeniería de Sistemas</div>
+      <div>© Eduardo José Soto Herrera — Ingeniería de Sistemas. Todos los derechos reservados.</div>
     </div>
     """,
     unsafe_allow_html=True,
