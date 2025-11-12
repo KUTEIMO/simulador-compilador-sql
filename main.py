@@ -27,15 +27,22 @@ def ast_to_graphviz(ast: Tree) -> Digraph:
     graph.attr(rankdir="TB", fontsize="10", fontname="Helvetica")
     
     # Diccionario para mapear tokens a IDs de nodos
-    token_to_node_id = {}
+    token_to_node_id: dict[str, str] = {}
+    id_to_label: dict[str, str] = {}
+    adjacency: dict[str, List[str]] = {}
     node_counter = [0]  # Contador para IDs únicos
+    creation_order: List[str] = []
     
     def get_node_id(token_value: str) -> str:
         """Obtiene o crea un ID de nodo para un token"""
         if token_value not in token_to_node_id:
             node_counter[0] += 1
-            token_to_node_id[token_value] = f"n{node_counter[0]}"
-            graph.node(token_to_node_id[token_value], token_value, shape="ellipse")
+            node_id = f"n{node_counter[0]}"
+            token_to_node_id[token_value] = node_id
+            id_to_label[node_id] = token_value
+            creation_order.append(token_value)
+            adjacency.setdefault(token_value, [])
+            graph.node(node_id, token_value, shape="ellipse")
         return token_to_node_id[token_value]
     
     def extract_token_value(node: Tree | Token) -> str | None:
@@ -72,7 +79,7 @@ def ast_to_graphviz(ast: Tree) -> Digraph:
     # Navegar el árbol SELECT_NODE
     if not isinstance(ast, Tree) or ast.data != "SELECT_NODE":
         graph.node("n1", "AST inválido")
-        return graph
+        return graph, creation_order, "AST inválido"
     
     # SELECT es la raíz (Query)
     select_node_id = get_node_id("SELECT")
@@ -91,17 +98,21 @@ def ast_to_graphviz(ast: Tree) -> Digraph:
                             if isinstance(ident_node, Tree) and ident_node.data == "IDENT":
                                 if ident_node.children and isinstance(ident_node.children[0], Token):
                                     col_token = ident_node.children[0]
-                                    col_id = get_node_id(str(col_token))
+                                    col_label = str(col_token)
+                                    col_id = get_node_id(col_label)
                                     graph.edge(root_id, col_id)
+                                    adjacency[id_to_label[root_id]].append(col_label)
                     elif isinstance(col_node, Tree) and col_node.data == "STAR":
                         # SELECT *
                         star_id = get_node_id("*")
                         graph.edge(root_id, star_id)
+                        adjacency[id_to_label[root_id]].append("*")
             
             elif child.data == "TABLE":
                 # TABLE: FROM y tabla
                 from_id = get_node_id("FROM")
                 graph.edge(root_id, from_id)
+                adjacency[id_to_label[root_id]].append("FROM")
                 
                 # Extraer nombre de tabla
                 if child.children:
@@ -109,24 +120,36 @@ def ast_to_graphviz(ast: Tree) -> Digraph:
                     if isinstance(table_node, Tree) and table_node.data == "IDENT":
                         if table_node.children and isinstance(table_node.children[0], Token):
                             table_token = table_node.children[0]
-                            table_id = get_node_id(str(table_token))
+                            table_label = str(table_token)
+                            table_id = get_node_id(table_label)
                             graph.edge(from_id, table_id)
+                            adjacency[id_to_label[from_id]].append(table_label)
             
             elif child.data == "WHERE_CLAUSE":
                 # WHERE_CLAUSE: WHERE y expresión booleana
                 where_id = get_node_id("WHERE")
                 graph.edge(root_id, where_id)
+                adjacency[id_to_label[root_id]].append("WHERE")
                 
                 # Procesar expresión booleana (AND/OR/COMPARE)
                 if child.children:
                     expr_node = child.children[0]
-                    _process_boolean_expr(expr_node, where_id, graph, get_node_id, extract_token_value)
+                    _process_boolean_expr(expr_node, where_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
     
-    return graph
+    # Construir representación textual jerárquica
+    def build_text(label: str, indent: int = 0) -> List[str]:
+        lines = [("  " * indent) + label]
+        for child in adjacency.get(label, []):
+            lines.extend(build_text(child, indent + 1))
+        return lines
+
+    ast_text = "\n".join(build_text("SELECT")) if "SELECT" in adjacency else ""
+
+    return graph, creation_order, ast_text
 
 
 def _process_boolean_expr(expr_node: Tree, parent_id: str, graph: Digraph, 
-                           get_node_id, extract_token_value):
+                           get_node_id, extract_token_value, adjacency, id_to_label):
     """Procesa expresiones booleanas: AND, OR, COMPARE"""
     if not isinstance(expr_node, Tree):
         return
@@ -144,12 +167,14 @@ def _process_boolean_expr(expr_node: Tree, parent_id: str, graph: Digraph,
             if op_value:
                 op_id = get_node_id(op_value)
                 graph.edge(parent_id, op_id)
+                adjacency[id_to_label[parent_id]].append(op_value)
                 
                 # Left: puede ser IDENT anidado
                 left_value = extract_token_value(left_node)
                 if left_value:
                     left_id = get_node_id(left_value)
                     graph.edge(op_id, left_id)
+                    adjacency[id_to_label[op_id]].append(left_value)
                 elif isinstance(left_node, Tree):
                     # Si es IDENT anidado, buscar recursivamente
                     if left_node.data == "IDENT" and left_node.children:
@@ -157,12 +182,14 @@ def _process_boolean_expr(expr_node: Tree, parent_id: str, graph: Digraph,
                         if nested_value:
                             left_id = get_node_id(nested_value)
                             graph.edge(op_id, left_id)
+                            adjacency[id_to_label[op_id]].append(nested_value)
                 
                 # Right: puede ser NUMBER, STRING, o IDENT
                 right_value = extract_token_value(right_node)
                 if right_value:
                     right_id = get_node_id(right_value)
                     graph.edge(op_id, right_id)
+                    adjacency[id_to_label[op_id]].append(right_value)
                 elif isinstance(right_node, Tree):
                     # Si es IDENT anidado, buscar recursivamente
                     if right_node.data == "IDENT" and right_node.children:
@@ -170,44 +197,47 @@ def _process_boolean_expr(expr_node: Tree, parent_id: str, graph: Digraph,
                         if nested_value:
                             right_id = get_node_id(nested_value)
                             graph.edge(op_id, right_id)
+                            adjacency[id_to_label[op_id]].append(nested_value)
     
     elif expr_node.data == "AND" or expr_node.data == "and":
         # AND: [left, (token AND opcional), right]
         # Filtrar tokens intermedios y procesar solo expresiones Tree
         and_id = get_node_id("AND")
         graph.edge(parent_id, and_id)
+        adjacency[id_to_label[parent_id]].append("AND")
         
         # Filtrar solo nodos Tree (ignorar tokens intermedios)
         tree_children = [ch for ch in expr_node.children if isinstance(ch, Tree)]
         if len(tree_children) >= 2:
             left_expr = tree_children[0]
             right_expr = tree_children[1]
-            _process_boolean_expr(left_expr, and_id, graph, get_node_id, extract_token_value)
-            _process_boolean_expr(right_expr, and_id, graph, get_node_id, extract_token_value)
+            _process_boolean_expr(left_expr, and_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
+            _process_boolean_expr(right_expr, and_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
         elif len(tree_children) >= 1:
             # Si solo hay un hijo Tree, procesarlo
-            _process_boolean_expr(tree_children[0], and_id, graph, get_node_id, extract_token_value)
+            _process_boolean_expr(tree_children[0], and_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
     
     elif expr_node.data == "OR" or expr_node.data == "or":
         # OR: [left, (token OR opcional), right]
         or_id = get_node_id("OR")
         graph.edge(parent_id, or_id)
+        adjacency[id_to_label[parent_id]].append("OR")
         
         # Filtrar solo nodos Tree
         tree_children = [ch for ch in expr_node.children if isinstance(ch, Tree)]
         if len(tree_children) >= 2:
             left_expr = tree_children[0]
             right_expr = tree_children[1]
-            _process_boolean_expr(left_expr, or_id, graph, get_node_id, extract_token_value)
-            _process_boolean_expr(right_expr, or_id, graph, get_node_id, extract_token_value)
+            _process_boolean_expr(left_expr, or_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
+            _process_boolean_expr(right_expr, or_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
         elif len(tree_children) >= 1:
-            _process_boolean_expr(tree_children[0], or_id, graph, get_node_id, extract_token_value)
+            _process_boolean_expr(tree_children[0], or_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
     
     elif expr_node.data == "PARENS":
         # PARENS: desenvuelve y procesa la expresión interna
         if expr_node.children:
             inner_expr = expr_node.children[0]
-            _process_boolean_expr(inner_expr, parent_id, graph, get_node_id, extract_token_value)
+            _process_boolean_expr(inner_expr, parent_id, graph, get_node_id, extract_token_value, adjacency, id_to_label)
 
 
 def detect_reserved_keyword_typos(sql_text: str) -> List[Tuple[str, str]]:
@@ -363,27 +393,10 @@ def analyze(sql_text: str) -> Dict[str, Any]:
             # (el parser internamente re-lexica)
             ast = parse_sql_to_ast(sql_text, tokens=None)
         result["ast"] = ast
-        result["ast_graph"] = ast_to_graphviz(ast)
-        # Texto del AST
-        def dump(node: Tree | Token, indent: int = 0, out_lines: list[str] | None = None):
-            if out_lines is None:
-                out_lines = []
-            prefix = "  " * indent
-            if isinstance(node, Tree):
-                out_lines.append(f"{prefix}{node.data}")
-                for ch in node.children:
-                    dump(ch, indent + 1, out_lines)
-            else:
-                out_lines.append(f"{prefix}{node.type}:{str(node)}")
-            return out_lines
-        ast_lines = dump(ast, 0, [])
-        result["ast_text"] = "\n".join(ast_lines)
-        # Conteo de nodos
-        def count_nodes(node: Tree | Token) -> int:
-            if isinstance(node, Tree):
-                return 1 + sum(count_nodes(ch) for ch in node.children)
-            return 1
-        result["metrics"]["ast_nodes"] = count_nodes(ast)
+        ast_graph, node_labels, ast_text = ast_to_graphviz(ast)
+        result["ast_graph"] = ast_graph
+        result["ast_text"] = ast_text
+        result["metrics"]["ast_nodes"] = len(node_labels)
         result["phase"] = "sintáctica"
     except UnexpectedInput as ex:
         # En un compilador real, intentamos construir AST parcial incluso con errores
