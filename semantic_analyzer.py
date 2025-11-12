@@ -13,6 +13,10 @@ class Symbol:
     name: str
     type: str
     scope: str
+    # Campos adicionales para tabla de símbolos de compilador real
+    kind: str = "variable"  # variable, function, table, column
+    size: int = 0  # Tamaño en bytes
+    offset: int = 0  # Offset en memoria (para compiladores reales)
 
 
 def load_schema(path: str | Path = "schema_simulado.json") -> Dict:
@@ -133,15 +137,31 @@ def analyze_semantics(ast: Tree, schema: Dict) -> Tuple[List[Symbol], List[Dict[
 
     columns_def = tables[table_name]
 
+    # Tabla de símbolos como en compilador real:
+    # Primero añadir la tabla misma
+    symbols.append(Symbol(name=table_name, type="TABLE", scope="GLOBAL", kind="table"))
+    
     # Columnas en SELECT
     select_cols = _collect_columns_from_select(ast)
     if select_cols and select_cols[0][0] == "*":
         # Expandir todas las columnas
         for col, meta in columns_def.items():
             col_type = meta.get("type", "UNKNOWN")
-            size = meta.get("size")
-            symbols.append(Symbol(name=col, type=col_type, scope=f"SELECT.{table_name}"))
-            types_rows.append({"columna": col, "tipo": col_type, "tamano": str(size or "-")})
+            size = meta.get("size", 0)
+            symbols.append(Symbol(
+                name=col, 
+                type=col_type, 
+                scope=f"{table_name}.SELECT", 
+                kind="column",
+                size=size
+            ))
+            types_rows.append({
+                "nombre": col, 
+                "tipo": col_type, 
+                "tamano": str(size or "-"),
+                "tabla": table_name,
+                "ambito": f"{table_name}.SELECT"
+            })
     else:
         for col, alias in select_cols:
             if col not in columns_def:
@@ -149,15 +169,43 @@ def analyze_semantics(ast: Tree, schema: Dict) -> Tuple[List[Symbol], List[Dict[
                 continue
             meta = columns_def[col]
             col_type = meta.get("type", "UNKNOWN")
-            size = meta.get("size")
-            symbols.append(Symbol(name=alias or col, type=col_type, scope=f"SELECT.{table_name}"))
-            types_rows.append({"columna": col, "tipo": col_type, "tamano": str(size or "-")})
+            size = meta.get("size", 0)
+            symbol_name = alias or col
+            symbols.append(Symbol(
+                name=symbol_name, 
+                type=col_type, 
+                scope=f"{table_name}.SELECT", 
+                kind="column",
+                size=size
+            ))
+            types_rows.append({
+                "nombre": col, 
+                "tipo": col_type, 
+                "tamano": str(size or "-"),
+                "tabla": table_name,
+                "ambito": f"{table_name}.SELECT",
+                "alias": alias if alias else "-"
+            })
 
-    # Identificadores en WHERE deben existir como columnas
+    # Identificadores en WHERE: añadir a tabla de símbolos si existen
     where_idents = _collect_identifiers_in_where(ast)
     for ident in where_idents:
         if ident not in columns_def:
             errors.append(f"Columna inexistente en WHERE: {ident}")
+        else:
+            # Añadir símbolo para WHERE si no existe ya
+            meta = columns_def[ident]
+            col_type = meta.get("type", "UNKNOWN")
+            size = meta.get("size", 0)
+            # Solo añadir si no está ya en símbolos (evitar duplicados)
+            if not any(s.name == ident and s.scope == f"{table_name}.WHERE" for s in symbols):
+                symbols.append(Symbol(
+                    name=ident,
+                    type=col_type,
+                    scope=f"{table_name}.WHERE",
+                    kind="column",
+                    size=size
+                ))
 
     return symbols, types_rows, errors
 
