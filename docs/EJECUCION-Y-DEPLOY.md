@@ -1,5 +1,9 @@
 # Ejecución y despliegue
 
+## Demo en producción
+
+**Streamlit Cloud:** https://simulador-compilador-sql-mveyat4jbbhzrcdfjtu5lk.streamlit.app/
+
 ## Requisitos
 
 - **Python 3.10+** (CI usa 3.11)
@@ -43,6 +47,8 @@ El workflow [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) ejecuta `p
 ## Despliegue gratuito
 
 ### Streamlit Community Cloud
+
+**App publicada:** https://simulador-compilador-sql-mveyat4jbbhzrcdfjtu5lk.streamlit.app/
 
 1. Conectar el repo `KUTEIMO/simulador-compilador-sql`
 2. **Main file:** `ui_streamlit.py`

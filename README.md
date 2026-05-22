@@ -2,7 +2,8 @@
 
 Proyecto académico de **Teoría de compiladores** — Universidad Simón Bolívar (Ingeniería de Sistemas). Simula las fases **léxica**, **sintáctica** y **semántica** de un subconjunto de SQL: tokens, AST (Lark), tabla de símbolos y ejecución demo sobre SQLite en memoria. Interfaz paso a paso con **Streamlit**.
 
-**Repositorio:** https://github.com/KUTEIMO/simulador-compilador-sql
+**Repositorio:** https://github.com/KUTEIMO/simulador-compilador-sql  
+**Demo (Streamlit Cloud):** https://simulador-compilador-sql-mveyat4jbbhzrcdfjtu5lk.streamlit.app/
 
 ---
 
@@ -25,6 +26,8 @@ Proyecto académico de **Teoría de compiladores** — Universidad Simón Bolív
 ---
 
 ## Inicio rápido
+
+Usa la **[demo en línea](https://simulador-compilador-sql-mveyat4jbbhzrcdfjtu5lk.streamlit.app/)** o clona el repo:
 
 ```bash
 git clone https://github.com/KUTEIMO/simulador-compilador-sql.git
@@ -88,7 +91,9 @@ simulador-compilador-sql/
 
 ---
 
-## Despliegue sin secretos
+## Despliegue
+
+**Producción:** https://simulador-compilador-sql-mveyat4jbbhzrcdfjtu5lk.streamlit.app/
 
 - **Streamlit Community Cloud:** entrypoint `ui_streamlit.py`, Python 3.10+, `requirements.txt`
 - **Hugging Face Spaces:** Space tipo Streamlit, mismo entrypoint
